@@ -1,41 +1,82 @@
 name: Build OpenTTD Browser Game
+
 on:
   workflow_dispatch:
+
 permissions:
   contents: read
+
 jobs:
   browser:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+
     container:
       image: emscripten/emsdk:6.0.1
+
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
+
       - name: Allow workspace ownership
         run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
       - name: Install OpenTTD liblzma Emscripten port
-        run: cp os/emscripten/ports/liblzma.py /emsdk/upstream/emscripten/tools/ports/contrib/
-      - name: Compile host tools
         run: |
-          cmake -S . -B build-host -DOPTION_TOOLS_ONLY=ON -DCMAKE_BUILD_TYPE=Release
-          cmake --build build-host --target tools -j 2
+          cp os/emscripten/ports/liblzma.py \
+            /emsdk/upstream/emscripten/tools/ports/contrib/
+
+      - name: Compile native host tools
+        run: |
+          cmake -S . -B build-host \
+            -DOPTION_TOOLS_ONLY=ON \
+            -DCMAKE_BUILD_TYPE=Release
+
+          cmake --build build-host --target tools --parallel 2
+
+      - name: Verify host tools
+        run: |
+          test -f build-host/strgen.cmake
+          test -f build-host/settingsgen.cmake
+          test -f build-host/src/strgen/strgen
+          test -f build-host/src/settingsgen/settingsgen
+
+          echo "Host tools and CMake exports verified."
+
+      - name: Configure WebAssembly game
+        run: |
+          HOST_BUILD_DIR="$(realpath build-host)"
+
+          emcmake cmake -S . -B build \
+            -DHOST_BINARY_DIR="$HOST_BUILD_DIR" \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DOPTION_USE_ASSERTS=OFF
+
       - name: Compile WebAssembly game
         run: |
-          emcmake cmake -S . -B build -DHOST_BINARY_DIR=../build-host -DCMAKE_BUILD_TYPE=Release -DOPTION_USE_ASSERTS=OFF
-          cmake --build build --target openttd -j 2
+          cmake --build build --target openttd --parallel 2
+
       - name: Assemble browser distribution
         run: |
           mkdir -p browser-dist
-          cp build/openttd.html build/openttd.js build/openttd.wasm build/openttd.data browser-dist/
-          cp browser-dist/openttd.html browser-dist/index.html
-          cat > browser-dist/README.txt <<'EOF'
-          Browser build of OpenTTD from the supplied source archive.
-          Serve these files together from an HTTP server; do not open as file://.
-          Original OpenTTD licensing notices apply. See repository COPYING.md.
-          EOF
-      - name: Downloadable browser build
+
+          cp build/openttd.html browser-dist/index.html
+          cp build/openttd.js browser-dist/
+          cp build/openttd.wasm browser-dist/
+          cp build/openttd.data browser-dist/
+
+          cat > browser-dist/README.txt <<'README'
+          Rail & Empire - OpenTTD Browser Build
+
+          Browser compilation of the OpenTTD engine.
+
+          Serve the files together over HTTP or HTTPS.
+
+          Original OpenTTD licensing requirements apply.
+          README
+
+      - name: Upload browser build
         uses: actions/upload-artifact@v4
         with:
-          name: openttd-browser-build
+          name: rail-empire-openttd-browser
           path: browser-dist/
           retention-days: 7
