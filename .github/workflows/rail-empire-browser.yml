@@ -1,0 +1,41 @@
+name: Build OpenTTD Browser Game
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  browser:
+    runs-on: ubuntu-latest
+    container:
+      image: emscripten/emsdk:6.0.1
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+      - name: Allow workspace ownership
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+      - name: Install OpenTTD liblzma Emscripten port
+        run: cp os/emscripten/ports/liblzma.py /emsdk/upstream/emscripten/tools/ports/contrib/
+      - name: Compile host tools
+        run: |
+          cmake -S . -B build-host -DOPTION_TOOLS_ONLY=ON -DCMAKE_BUILD_TYPE=Release
+          cmake --build build-host --target tools -j 2
+      - name: Compile WebAssembly game
+        run: |
+          emcmake cmake -S . -B build -DHOST_BINARY_DIR=../build-host -DCMAKE_BUILD_TYPE=Release -DOPTION_USE_ASSERTS=OFF
+          cmake --build build --target openttd -j 2
+      - name: Assemble browser distribution
+        run: |
+          mkdir -p browser-dist
+          cp build/openttd.html build/openttd.js build/openttd.wasm build/openttd.data browser-dist/
+          cp browser-dist/openttd.html browser-dist/index.html
+          cat > browser-dist/README.txt <<'EOF'
+          Browser build of OpenTTD from the supplied source archive.
+          Serve these files together from an HTTP server; do not open as file://.
+          Original OpenTTD licensing notices apply. See repository COPYING.md.
+          EOF
+      - name: Downloadable browser build
+        uses: actions/upload-artifact@v4
+        with:
+          name: openttd-browser-build
+          path: browser-dist/
+          retention-days: 7

@@ -1,0 +1,25 @@
+RAIL & EMPIRE — OPENTTD BROWSER BUILD STARTER
+
+This is the supplied OpenTTD source plus a manually triggered GitHub Actions
+workflow for compiling a browser version. This is NOT a precompiled game.
+No Firebase deployment is required.
+
+HOW TO USE
+1. Create a new EMPTY GitHub repository (for example rail-empire-engine).
+2. Upload this archive's CONTENTS (not the zip file itself) into that repository.
+   The repository root must contain CMakeLists.txt, src/, os/, .github/.
+   Uploading hundreds of files through GitHub's web interface may be impractical.
+   Alternative: use GitHub's Import repository workflow or git from Cloud Shell.
+3. On GitHub open Actions -> Build OpenTTD Browser Game -> Run workflow.
+4. Wait for the build. Open its run page and download the
+   'openttd-browser-build' artifact if the build succeeds.
+5. Test with a web server before uploading anything to Firebase.
+
+IMPORTANT
+- This package has NOT been compiled or browser-tested here.
+- The original engine is OpenTTD, not a 3D rail game.
+- OpenTTD's GPL and other included licenses apply. Preserve source and notices.
+- This zip includes the original source code; do not confuse with an executable.
+- The game may need graphics/sound assets; these are not guaranteed to be
+  bundled in the source archive.
+- Do not deploy to Firebase while Hosting quota is exceeded.
